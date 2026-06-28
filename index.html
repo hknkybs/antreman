@@ -161,10 +161,10 @@ function todayStr() {
   return d.toISOString().slice(0,10);
 }
 
-function lastSessionFor(dayKey, exName) {
+function lastSessionFor(dayKey, exName, beforeDate) {
   for (let i = state.history.length - 1; i >= 0; i--) {
     const s = state.history[i];
-    if (s.day === dayKey) {
+    if (s.day === dayKey && (!beforeDate || s.date < beforeDate)) {
       const ex = s.exercises.find(e => e.name === exName);
       if (ex) return ex;
     }
@@ -172,34 +172,48 @@ function lastSessionFor(dayKey, exName) {
   return null;
 }
 
+function findSession(dayKey, date) {
+  return state.history.find(s => s.day === dayKey && s.date === date) || null;
+}
+
+function onDateChange() {
+  renderLog();
+}
+
 function renderLog() {
   const day = PROGRAM[state.day];
+  const date = (document.getElementById('sessDate') && document.getElementById('sessDate').value) || todayStr();
+  const existing = findSession(state.day, date);
   let html = `<div class="datebar">
-    <input type="date" id="sessDate" value="${todayStr()}">
+    <input type="date" id="sessDate" value="${date}" onchange="onDateChange()">
   </div>
-  <div class="daymeta">${day.tag} · ${day.exercises.length} hareket</div>`;
+  <div class="daymeta">${day.tag} · ${day.exercises.length} hareket${existing ? ' · <span style="color:var(--accent)">bu tarihte kayıt var, düzenliyorsun</span>' : ''}</div>`;
 
   day.exercises.forEach((ex, i) => {
-    const last = lastSessionFor(state.day, ex.name);
-    const lastInfo = last ? `Son: ${last.set1w||'-'}kg×${last.set1r||'-'} / ${last.set2w||'-'}kg×${last.set2r||'-'}` : 'Henüz kayıt yok';
+    const existingEx = existing ? existing.exercises.find(e => e.name === ex.name) : null;
+    const last = lastSessionFor(state.day, ex.name, date);
+    const vals = existingEx || last;
+    const lastInfo = existingEx
+      ? 'Bu tarihteki kayıt yüklendi'
+      : (last ? `Son: ${last.set1w||'-'}kg×${last.set1r||'-'} / ${last.set2w||'-'}kg×${last.set2r||'-'}` : 'Henüz kayıt yok');
     html += `
     <div class="card" data-ex="${i}">
       <div class="exname">${ex.name}</div>
       <div class="extag">${ex.tag}</div>
       <div class="target">Hedef: ${ex.target} &nbsp;·&nbsp; ${lastInfo}</div>
       <div class="setsrow">
-        <div><span class="lbl">Set 1 (kg)</span><input type="number" inputmode="decimal" id="ex${i}_w1" value="${last?last.set1w||'':''}"></div>
-        <div><span class="lbl">Tekrar</span><input type="number" inputmode="numeric" id="ex${i}_r1" value="${last?last.set1r||'':''}"></div>
+        <div><span class="lbl">Set 1 (kg)</span><input type="number" inputmode="decimal" id="ex${i}_w1" value="${vals?vals.set1w||'':''}"></div>
+        <div><span class="lbl">Tekrar</span><input type="number" inputmode="numeric" id="ex${i}_r1" value="${vals?vals.set1r||'':''}"></div>
         <div></div>
       </div>
       <div class="setsrow">
-        <div><span class="lbl">Set 2 (kg)</span><input type="number" inputmode="decimal" id="ex${i}_w2" value="${last?last.set2w||'':''}"></div>
-        <div><span class="lbl">Tekrar</span><input type="number" inputmode="numeric" id="ex${i}_r2" value="${last?last.set2r||'':''}"></div>
+        <div><span class="lbl">Set 2 (kg)</span><input type="number" inputmode="decimal" id="ex${i}_w2" value="${vals?vals.set2w||'':''}"></div>
+        <div><span class="lbl">Tekrar</span><input type="number" inputmode="numeric" id="ex${i}_r2" value="${vals?vals.set2r||'':''}"></div>
         <div></div>
       </div>
       <div class="setsrow">
-        <div><span class="lbl">Drop (kg)</span><input type="number" inputmode="decimal" id="ex${i}_wd" value=""></div>
-        <div><span class="lbl">Tekrar</span><input type="number" inputmode="numeric" id="ex${i}_rd" value=""></div>
+        <div><span class="lbl">Drop (kg)</span><input type="number" inputmode="decimal" id="ex${i}_wd" value="${existingEx?existingEx.dropw||'':''}"></div>
+        <div><span class="lbl">Tekrar</span><input type="number" inputmode="numeric" id="ex${i}_rd" value="${existingEx?existingEx.dropr||'':''}"></div>
         <div></div>
       </div>
     </div>`;
@@ -207,7 +221,7 @@ function renderLog() {
 
   html += `<div class="card topnote">
     <div class="exname">Genel Not</div>
-    <textarea id="sessNote" placeholder="Enerji, uyku, vücut ağırlığı, sakatlık hissi vb."></textarea>
+    <textarea id="sessNote" placeholder="Enerji, uyku, vücut ağırlığı, sakatlık hissi vb.">${existing?existing.note||'':''}</textarea>
   </div>`;
 
   document.getElementById('main').innerHTML = html;
@@ -265,8 +279,14 @@ function saveSession() {
   }));
   const note = document.getElementById('sessNote').value;
 
-  const id = state.day + '_' + date + '_' + Date.now();
-  state.history.push({ id, day: state.day, date, exercises, note });
+  const existing = findSession(state.day, date);
+  if (existing) {
+    existing.exercises = exercises;
+    existing.note = note;
+  } else {
+    const id = state.day + '_' + date + '_' + Date.now();
+    state.history.push({ id, day: state.day, date, exercises, note });
+  }
   persist();
   setView('hist');
 }
