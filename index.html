@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>Antrenman Takip</title>
+<style>
+  :root{
+    --bg:#0f1115; --card:#1a1d24; --card2:#20242c; --accent:#3ddc84; --accent2:#4f8cff;
+    --text:#eef0f3; --muted:#8a8f99; --danger:#ff5d5d; --border:#2a2e38;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding-bottom:80px;}
+  header{position:sticky;top:0;background:var(--bg);padding:14px 16px 8px;z-index:10;border-bottom:1px solid var(--border);}
+  h1{font-size:18px;margin:0 0 10px;}
+  .tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;}
+  .tab{flex:0 0 auto;padding:8px 14px;border-radius:20px;background:var(--card2);color:var(--muted);font-size:14px;font-weight:600;white-space:nowrap;}
+  .tab.active{background:var(--accent);color:#04140a;}
+  .nav{display:flex;gap:6px;padding:10px 16px;}
+  .navbtn{flex:1;padding:10px;border-radius:10px;background:var(--card2);color:var(--muted);text-align:center;font-size:13px;font-weight:600;}
+  .navbtn.active{background:var(--accent2);color:#fff;}
+  main{padding:12px 16px;}
+  .daymeta{font-size:13px;color:var(--muted);margin-bottom:10px;}
+  .datebar{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+  .datebar input[type=date]{flex:1;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;font-size:14px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px;}
+  .exname{font-weight:700;font-size:15px;margin-bottom:2px;}
+  .extag{font-size:12px;color:var(--muted);margin-bottom:10px;}
+  .target{font-size:12px;color:var(--accent);margin-bottom:10px;}
+  .setsrow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:6px;}
+  .setsrow .lbl{font-size:11px;color:var(--muted);margin-bottom:4px;display:block;}
+  input[type=number],input[type=text]{width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;font-size:14px;}
+  textarea{width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;font-size:13px;min-height:50px;font-family:inherit;}
+  .topnote{margin-bottom:12px;}
+  .savebar{position:fixed;bottom:0;left:0;right:0;background:var(--bg);border-top:1px solid var(--border);padding:10px 16px calc(10px + env(safe-area-inset-bottom));display:flex;gap:8px;}
+  button.primary{flex:1;background:var(--accent);color:#04140a;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:700;}
+  button.secondary{background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:13px;font-size:14px;font-weight:600;}
+  .histitem{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px;}
+  .histhead{display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:700;}
+  .histday{color:var(--accent2);}
+  .histdate{color:var(--muted);font-size:12px;}
+  .histex{font-size:13px;margin-top:8px;border-top:1px solid var(--border);padding-top:8px;}
+  .histex .n{font-weight:600;}
+  .histex .s{color:var(--muted);}
+  .delbtn{color:var(--danger);font-size:12px;background:none;border:none;padding:4px;}
+  .empty{color:var(--muted);text-align:center;padding:40px 10px;font-size:14px;}
+  .toolsrow{display:flex;gap:8px;margin-bottom:14px;}
+  .toolsrow button{flex:1;background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px;font-size:13px;font-weight:600;}
+  .progress{font-size:12px;margin-top:6px;}
+  .up{color:var(--accent);}
+  .down{color:var(--danger);}
+  .flat{color:var(--muted);}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🏋️ Antrenman Takip</h1>
+  <div class="nav">
+    <div class="navbtn active" id="navLog" onclick="setView('log')">Bugünkü Antrenman</div>
+    <div class="navbtn" id="navHist" onclick="setView('hist')">Geçmiş</div>
+  </div>
+  <div class="tabs" id="dayTabs"></div>
+</header>
+
+<main id="main"></main>
+
+<div class="savebar" id="saveBar">
+  <button class="secondary" onclick="exportData()">Dışa Aktar</button>
+  <button class="primary" onclick="saveSession()">Kaydet</button>
+</div>
+
+<input type="file" id="importFile" accept="application/json" style="display:none" onchange="importData(event)">
+
+<script>
+const PROGRAM = {
+  push: { label: "Push", tag: "Göğüs / Omuz / Triceps", exercises: [
+    {name:"Vertical Chest Press", tag:"bileşik · göğüs", target:"70 kg"},
+    {name:"Deltoid Press", tag:"bileşik · omuz", target:"55 kg"},
+    {name:"Incline Press (Smith eğimli)", tag:"üst göğüs", target:"tespit"},
+    {name:"Cable Lateral Raise", tag:"yan deltoid", target:"tespit"},
+    {name:"Triceps Pushdown", tag:"triceps", target:"mevcut kademe"},
+    {name:"Overhead Triceps Extension", tag:"triceps uzun baş", target:"tespit"},
+  ]},
+  pull: { label: "Pull", tag: "Sırt / Biceps / Arka Omuz", exercises: [
+    {name:"Lat Pulldown", tag:"dikey çekiş · bileşik", target:"80 kg"},
+    {name:"Pulley Row", tag:"yatay çekiş · bileşik", target:"65 kg"},
+    {name:"T-Bar Row / Super Power Row", tag:"sırt kalınlığı", target:"tespit"},
+    {name:"Pullover Machine", tag:"lat izolasyon", target:"tespit"},
+    {name:"Face Pull", tag:"arka omuz · sağlık", target:"50 kg"},
+    {name:"Curling Machine", tag:"biceps", target:"tespit"},
+  ]},
+  leg: { label: "Leg", tag: "Bacak Komple", exercises: [
+    {name:"Hack Squat", tag:"quad · bileşik", target:"55 kg"},
+    {name:"Leg Press", tag:"quad/glute · bileşik", target:"130 kg"},
+    {name:"RDL", tag:"hamstring · teknik/ROM", target:"60 kg (tutuluyor)"},
+    {name:"Leg Curling (oturarak)", tag:"hamstring", target:"35 kg"},
+    {name:"Leg Extension", tag:"quad izolasyon", target:"55 kg"},
+    {name:"Seated Calf", tag:"baldır", target:"55 kg"},
+    {name:"Abdominal Crunch (opsiyonel)", tag:"karın", target:"-"},
+  ]},
+  upper: { label: "Upper", tag: "Üst Gövde (farklı açılar)", exercises: [
+    {name:"Super Vertical Chest Press", tag:"göğüs farklı açı", target:"tespit"},
+    {name:"Assisted Pull-up", tag:"dikey çekiş", target:"tespit (yardım)"},
+    {name:"Super Deltoid Press", tag:"omuz farklı uyaran", target:"tespit"},
+    {name:"Super Power Row", tag:"sırt", target:"tespit"},
+    {name:"Chest Fly (Pec/Super Peck Back)", tag:"göğüs izolasyon", target:"45 kg"},
+    {name:"Preacher Curl (EZ bar)", tag:"biceps farklı açı", target:"tespit"},
+    {name:"Alternate Triceps Machine", tag:"triceps", target:"tespit"},
+    {name:"Wrist Curl", tag:"ön kol", target:"18 kg"},
+  ]},
+  lower: { label: "Lower", tag: "Alt Gövde (posterior/glute)", exercises: [
+    {name:"Super Leg Press 45°", tag:"quad · bileşik", target:"tespit"},
+    {name:"Hip Thrust", tag:"glute · bileşik", target:"70 kg"},
+    {name:"Leg Curling (oturarak)", tag:"hamstring 2. uyaran", target:"35 kg"},
+    {name:"Leg Extension", tag:"quad izolasyon", target:"55 kg"},
+    {name:"Master Gluteus / Standing Abductor", tag:"glute izolasyon", target:"tespit"},
+    {name:"Seated Calf", tag:"baldır 2. uyaran", target:"55 kg"},
+    {name:"Adductor/Abductor (opsiyonel)", tag:"-", target:"-"},
+  ]},
+};
+
+const STORAGE_KEY = "antrenman_takip_v1";
+let state = { view: "log", day: "push", history: [] };
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) state.history = JSON.parse(raw);
+  } catch(e) { console.error(e); }
+}
+function persist() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.history));
+}
+
+function setView(v) {
+  state.view = v;
+  document.getElementById('navLog').classList.toggle('active', v === 'log');
+  document.getElementById('navHist').classList.toggle('active', v === 'hist');
+  document.getElementById('saveBar').style.display = v === 'log' ? 'flex' : 'none';
+  render();
+}
+
+function setDay(d) {
+  state.day = d;
+  render();
+}
+
+function renderTabs() {
+  const tabs = document.getElementById('dayTabs');
+  if (state.view !== 'log') { tabs.innerHTML = ''; return; }
+  tabs.innerHTML = Object.keys(PROGRAM).map(k =>
+    `<div class="tab ${k===state.day?'active':''}" onclick="setDay('${k}')">${PROGRAM[k].label}</div>`
+  ).join('');
+}
+
+function todayStr() {
+  const d = new Date();
+  return d.toISOString().slice(0,10);
+}
+
+function lastSessionFor(dayKey, exName) {
+  for (let i = state.history.length - 1; i >= 0; i--) {
+    const s = state.history[i];
+    if (s.day === dayKey) {
+      const ex = s.exercises.find(e => e.name === exName);
+      if (ex) return ex;
+    }
+  }
+  return null;
+}
+
+function renderLog() {
+  const day = PROGRAM[state.day];
+  let html = `<div class="datebar">
+    <input type="date" id="sessDate" value="${todayStr()}">
+  </div>
+  <div class="daymeta">${day.tag} · ${day.exercises.length} hareket</div>`;
+
+  day.exercises.forEach((ex, i) => {
+    const last = lastSessionFor(state.day, ex.name);
+    const lastInfo = last ? `Son: ${last.set1w||'-'}kg×${last.set1r||'-'} / ${last.set2w||'-'}kg×${last.set2r||'-'}` : 'Henüz kayıt yok';
+    html += `
+    <div class="card" data-ex="${i}">
+      <div class="exname">${ex.name}</div>
+      <div class="extag">${ex.tag}</div>
+      <div class="target">Hedef: ${ex.target} &nbsp;·&nbsp; ${lastInfo}</div>
+      <div class="setsrow">
+        <div><span class="lbl">Set 1 (kg)</span><input type="number" inputmode="decimal" id="ex${i}_w1" value="${last?last.set1w||'':''}"></div>
+        <div><span class="lbl">Tekrar</span><input type="number" inputmode="numeric" id="ex${i}_r1" value="${last?last.set1r||'':''}"></div>
+        <div></div>
+      </div>
+      <div class="setsrow">
+        <div><span class="lbl">Set 2 (kg)</span><input type="number" inputmode="decimal" id="ex${i}_w2" value="${last?last.set2w||'':''}"></div>
+        <div><span class="lbl">Tekrar</span><input type="number" inputmode="numeric" id="ex${i}_r2" value="${last?last.set2r||'':''}"></div>
+        <div></div>
+      </div>
+      <div class="setsrow">
+        <div><span class="lbl">Drop (kg)</span><input type="number" inputmode="decimal" id="ex${i}_wd" value=""></div>
+        <div><span class="lbl">Tekrar</span><input type="number" inputmode="numeric" id="ex${i}_rd" value=""></div>
+        <div></div>
+      </div>
+    </div>`;
+  });
+
+  html += `<div class="card topnote">
+    <div class="exname">Genel Not</div>
+    <textarea id="sessNote" placeholder="Enerji, uyku, vücut ağırlığı, sakatlık hissi vb."></textarea>
+  </div>`;
+
+  document.getElementById('main').innerHTML = html;
+}
+
+function renderHist() {
+  if (state.history.length === 0) {
+    document.getElementById('main').innerHTML = `<div class="empty">Henüz antrenman kaydı yok.<br>"Bugünkü Antrenman" sekmesinden başla.</div>
+    <div class="toolsrow">
+      <button onclick="document.getElementById('importFile').click()">İçe Aktar</button>
+      <button onclick="exportData()">Dışa Aktar</button>
+    </div>`;
+    return;
+  }
+  const sorted = [...state.history].sort((a,b) => b.date.localeCompare(a.date));
+  let html = `<div class="toolsrow">
+    <button onclick="document.getElementById('importFile').click()">İçe Aktar</button>
+    <button onclick="exportData()">Dışa Aktar</button>
+  </div>`;
+  sorted.forEach(s => {
+    const dayLabel = PROGRAM[s.day] ? PROGRAM[s.day].label : s.day;
+    html += `<div class="histitem">
+      <div class="histhead">
+        <span class="histday">${dayLabel}</span>
+        <span class="histdate">${s.date}</span>
+      </div>`;
+    s.exercises.forEach(ex => {
+      if (!ex.set1w && !ex.set1r && !ex.set2w) return;
+      html += `<div class="histex"><span class="n">${ex.name}:</span> <span class="s">${ex.set1w||'-'}kg×${ex.set1r||'-'}, ${ex.set2w||'-'}kg×${ex.set2r||'-'}${ex.dropw?(', Drop '+ex.dropw+'kg×'+(ex.dropr||'-')):''}</span></div>`;
+    });
+    if (s.note) html += `<div class="histex"><span class="s">📝 ${s.note}</span></div>`;
+    html += `<div style="margin-top:8px;text-align:right"><button class="delbtn" onclick="deleteSession('${s.id}')">Sil</button></div>`;
+    html += `</div>`;
+  });
+  document.getElementById('main').innerHTML = html;
+}
+
+function render() {
+  renderTabs();
+  if (state.view === 'log') renderLog();
+  else renderHist();
+}
+
+function saveSession() {
+  const day = PROGRAM[state.day];
+  const date = document.getElementById('sessDate').value || todayStr();
+  const exercises = day.exercises.map((ex, i) => ({
+    name: ex.name,
+    set1w: document.getElementById(`ex${i}_w1`).value,
+    set1r: document.getElementById(`ex${i}_r1`).value,
+    set2w: document.getElementById(`ex${i}_w2`).value,
+    set2r: document.getElementById(`ex${i}_r2`).value,
+    dropw: document.getElementById(`ex${i}_wd`).value,
+    dropr: document.getElementById(`ex${i}_rd`).value,
+  }));
+  const note = document.getElementById('sessNote').value;
+
+  const id = state.day + '_' + date + '_' + Date.now();
+  state.history.push({ id, day: state.day, date, exercises, note });
+  persist();
+  setView('hist');
+}
+
+function deleteSession(id) {
+  if (!confirm('Bu antrenman kaydı silinsin mi?')) return;
+  state.history = state.history.filter(s => s.id !== id);
+  persist();
+  render();
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(state.history, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `antrenman_yedek_${todayStr()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!Array.isArray(data)) throw new Error('Geçersiz format');
+      state.history = data;
+      persist();
+      render();
+      alert('İçe aktarma tamamlandı.');
+    } catch (err) {
+      alert('Dosya okunamadı: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+load();
+render();
+</script>
+</body>
+</html>
