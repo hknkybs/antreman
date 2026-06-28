@@ -288,6 +288,17 @@ function saveSession() {
     state.history.push({ id, day: state.day, date, exercises, note });
   }
   persist();
+
+  day.exercises.forEach((ex, i) => {
+    document.getElementById(`ex${i}_w1`).value = '';
+    document.getElementById(`ex${i}_r1`).value = '';
+    document.getElementById(`ex${i}_w2`).value = '';
+    document.getElementById(`ex${i}_r2`).value = '';
+    document.getElementById(`ex${i}_wd`).value = '';
+    document.getElementById(`ex${i}_rd`).value = '';
+  });
+  document.getElementById('sessNote').value = '';
+
   setView('hist');
 }
 
