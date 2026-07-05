@@ -155,8 +155,7 @@ const TYPE_LABELS = {
 };
 
 const STORAGE_KEY = "antrenman_takip_v2";
-let state = { view:"log", day:"push", history:[] };
-// currentSets: { [exName]: [{w, r, type}] }
+let state = { view:"log", day:"push", history:[], logDate: new Date().toISOString().slice(0,10) };
 let currentSets = {};
 let currentNote = "";
 
@@ -199,11 +198,6 @@ function lastSessionFor(dayKey, beforeDate) {
   }
   return null;
 }
-function currentDate() {
-  const el = document.getElementById('sessDate');
-  return el ? el.value : todayStr();
-}
-
 function initCurrentSets(dayKey, date) {
   currentSets = {};
   currentNote = "";
@@ -211,7 +205,9 @@ function initCurrentSets(dayKey, date) {
   if (existing) {
     currentNote = existing.note || "";
     PROGRAM[dayKey].exercises.forEach(ex => {
-      currentSets[ex.name] = (existing.exercises && existing.exercises[ex.name]) ? [...existing.exercises[ex.name].map(s=>({...s}))] : [];
+      currentSets[ex.name] = existing.exercises && existing.exercises[ex.name]
+        ? existing.exercises[ex.name].map(s=>({...s}))
+        : [];
     });
   } else {
     PROGRAM[dayKey].exercises.forEach(ex => { currentSets[ex.name] = []; });
@@ -228,13 +224,13 @@ function setView(v) {
 
 function setDay(d) {
   state.day = d;
-  initCurrentSets(d, todayStr());
+  initCurrentSets(d, state.logDate);
   render();
 }
 
-function onDateChange() {
-  const date = currentDate();
-  initCurrentSets(state.day, date);
+function onDateChange(val) {
+  state.logDate = val;
+  initCurrentSets(state.day, val);
   render();
 }
 
@@ -279,14 +275,14 @@ function renderExCard(idx) {
 
 function renderLog() {
   const day = PROGRAM[state.day];
-  const date = currentDate();
+  const date = state.logDate;
   const existing = findSession(state.day, date);
   const last = lastSessionFor(state.day, date);
 
   renderTabs();
 
   let html = `<div class="datebar">
-    <input type="date" id="sessDate" value="${date}" onchange="onDateChange()">
+    <input type="date" id="sessDate" value="${date}" onchange="onDateChange(this.value)">
     ${existing ? '<span class="editbadge">✏️ Düzenleniyor</span>' : ''}
   </div>
   <div class="daymeta">${day.tag} · ${day.exercises.length} hareket</div>`;
@@ -380,7 +376,7 @@ function render() {
 
 function saveSession() {
   const day = PROGRAM[state.day];
-  const date = currentDate();
+  const date = state.logDate;
   const note = document.getElementById('sessNote')?.value || '';
 
   const exercises = {};
