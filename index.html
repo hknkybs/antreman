@@ -238,36 +238,42 @@ function onDateChange() {
   render();
 }
 
-function addSet(exName) {
-  const w = document.getElementById('inp_w_' + CSS.escape(exName)).value.trim();
-  const r = document.getElementById('inp_r_' + CSS.escape(exName)).value.trim();
-  const type = document.getElementById('inp_t_' + CSS.escape(exName)).value;
+function addSet(idx) {
+  const exName = PROGRAM[state.day].exercises[idx].name;
+  const w = document.getElementById('inp_w_' + idx).value.trim();
+  const r = document.getElementById('inp_r_' + idx).value.trim();
+  const type = document.getElementById('inp_t_' + idx).value;
   if (!w && !r) return;
   currentSets[exName].push({w, r, type});
-  document.getElementById('inp_w_' + CSS.escape(exName)).value = '';
-  document.getElementById('inp_r_' + CSS.escape(exName)).value = '';
-  renderExCard(exName);
+  document.getElementById('inp_w_' + idx).value = '';
+  document.getElementById('inp_r_' + idx).value = '';
+  renderExCard(idx);
 }
 
-function removeSet(exName, idx) {
-  currentSets[exName].splice(idx, 1);
-  renderExCard(exName);
+function removeSet(idx, setIdx) {
+  const exName = PROGRAM[state.day].exercises[idx].name;
+  currentSets[exName].splice(setIdx, 1);
+  renderExCard(idx);
 }
 
-function renderExCard(exName) {
-  const el = document.getElementById('excard_' + CSS.escape(exName));
+function renderExCard(idx) {
+  const exName = PROGRAM[state.day].exercises[idx].name;
+  const el = document.getElementById('excard_' + idx);
   if (!el) return;
   const sets = currentSets[exName] || [];
-  let html = sets.length ? '<div class="setlist">' : '';
-  sets.forEach((s, i) => {
-    const t = TYPE_LABELS[s.type] || {css:"çalışma", label:s.type};
-    html += `<div class="setrow">
-      <span class="settype ${t.css}">${t.label}</span>
-      <span class="setvals">${s.w ? s.w+'kg' : '—'} × ${s.r || '—'}</span>
-      <button class="delbtn" onclick="removeSet(${JSON.stringify(exName)}, ${i})">×</button>
-    </div>`;
-  });
-  if (sets.length) html += '</div>';
+  let html = '';
+  if (sets.length) {
+    html = '<div class="setlist">';
+    sets.forEach((s, i) => {
+      const t = TYPE_LABELS[s.type] || {css:"çalışma", label:s.type};
+      html += `<div class="setrow">
+        <span class="settype ${t.css}">${t.label}</span>
+        <span class="setvals">${s.w ? s.w+'kg' : '—'} × ${s.r || '—'}</span>
+        <button class="delbtn" onclick="removeSet(${idx}, ${i})">×</button>
+      </div>`;
+    });
+    html += '</div>';
+  }
   el.innerHTML = html;
 }
 
@@ -285,29 +291,28 @@ function renderLog() {
   </div>
   <div class="daymeta">${day.tag} · ${day.exercises.length} hareket</div>`;
 
-  day.exercises.forEach(ex => {
+  day.exercises.forEach((ex, idx) => {
     const lastEx = last && last.exercises && last.exercises[ex.name];
     const lastInfo = lastEx && lastEx.length
       ? lastEx.filter(s=>s.type==='çalışma'||s.type==='+1 set').map(s=>`${s.w||'?'}kg×${s.r||'?'}`).join(' / ') || '—'
       : null;
-    const eid = CSS.escape(ex.name);
     html += `<div class="card">
       <div class="exname">${ex.name}</div>
       <div class="extag">${ex.tag}</div>
       <div class="target">Hedef: ${ex.target}${lastInfo ? ' &nbsp;·&nbsp; Son: '+lastInfo : ''}</div>
-      <div id="excard_${eid}"></div>
+      <div id="excard_${idx}"></div>
       <div class="addlabels"><span>kg</span><span>tekrar</span><span>tür</span><span></span></div>
       <div class="addrow">
-        <input type="number" inputmode="decimal" id="inp_w_${eid}" placeholder="kg">
-        <input type="number" inputmode="numeric" id="inp_r_${eid}" placeholder="tekrar">
-        <select id="inp_t_${eid}">
+        <input type="number" inputmode="decimal" id="inp_w_${idx}" placeholder="kg">
+        <input type="number" inputmode="numeric" id="inp_r_${idx}" placeholder="tekrar">
+        <select id="inp_t_${idx}">
           <option value="ısınma">Isınma</option>
           <option value="çalışma" selected>Çalışma</option>
           <option value="drop">Drop</option>
           <option value="rest-pause">Rest-Pause</option>
           <option value="+1 set">+1 Set</option>
         </select>
-        <button class="addbtn" onclick="addSet(${JSON.stringify(ex.name)})">Ekle</button>
+        <button class="addbtn" onclick="addSet(${idx})">Ekle</button>
       </div>
     </div>`;
   });
@@ -318,7 +323,7 @@ function renderLog() {
   </div>`;
 
   document.getElementById('main').innerHTML = html;
-  day.exercises.forEach(ex => renderExCard(ex.name));
+  day.exercises.forEach((ex, idx) => renderExCard(idx));
 }
 
 function renderTabs() {
